@@ -1,0 +1,123 @@
+// WoWoKitchen - Prisma Schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+// ==================== 用户 ====================
+model User {
+  id           Int          @id @default(autoincrement())
+  username     String       @unique
+  passwordHash String
+  createdAt    DateTime     @default(now())
+  ingredients  Ingredient[]
+  dishes       Dish[]
+  menus        Menu[]
+  parties      Party[]
+}
+
+// ==================== 食材 ====================
+model Ingredient {
+  id        Int              @id @default(autoincrement())
+  name      String
+  unitPrice Float            // 采购单价
+  spec      String           // 采购规格，如 "500g/包"
+  userId    Int
+  user      User             @relation(fields: [userId], references: [id])
+  dishes    DishIngredient[]
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  @@unique([name, userId])   // 同一用户不允许重名食材
+}
+
+// ==================== 菜品 ====================
+model Dish {
+  id            Int              @id @default(autoincrement())
+  name          String
+  estimatedCost Float            @default(0) // 自动计算的预估成本
+  userId        Int
+  user          User             @relation(fields: [userId], references: [id])
+  ingredients   DishIngredient[]
+  menus         MenuDish[]
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+}
+
+// ==================== 菜品-食材关联 (BOM) ====================
+model DishIngredient {
+  id           Int        @id @default(autoincrement())
+  dishId       Int
+  ingredientId Int
+  quantity     Float      // 消耗量
+  unit         String     // 单位（g, 个, ml 等）
+  dish         Dish       @relation(fields: [dishId], references: [id], onDelete: Cascade)
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id])
+
+  @@unique([dishId, ingredientId]) // 同一菜品中同一食材只出现一次
+}
+
+// ==================== 菜单集 ====================
+model Menu {
+  id        Int        @id @default(autoincrement())
+  name      String
+  userId    Int
+  user      User       @relation(fields: [userId], references: [id])
+  dishes    MenuDish[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+// ==================== 菜单-菜品关联 ====================
+model MenuDish {
+  id     Int  @id @default(autoincrement())
+  menuId Int
+  dishId Int
+  menu   Menu @relation(fields: [menuId], references: [id], onDelete: Cascade)
+  dish   Dish @relation(fields: [dishId], references: [id])
+
+  @@unique([menuId, dishId]) // 同一菜单中同一菜品只添加一次
+}
+
+// ==================== 饭局 ====================
+model Party {
+  id        Int          @id @default(autoincrement())
+  name      String
+  status    String       @default("ACTIVE") // ACTIVE | LOCKED
+  shareCode String       @unique            // 分享码
+  hostId    Int
+  host      User         @relation(fields: [hostId], references: [id])
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  dishes    PartyDish[]
+  guests    PartyGuest[]
+}
+
+// ==================== 饭局菜品（快照） ====================
+model PartyDish {
+  id                  Int         @id @default(autoincrement())
+  partyId             Int
+  dishName            String                    // 菜品名称快照
+  ingredientsSnapshot String      @db.Text      // JSON: [{name, quantity, unit, unitPrice}]
+  costSnapshot        Float                     // 成本快照
+  addedByGuestId      Int?                      // 如果是游客添加的
+  party               Party       @relation(fields: [partyId], references: [id], onDelete: Cascade)
+  addedByGuest        PartyGuest? @relation(fields: [addedByGuestId], references: [id])
+  createdAt           DateTime    @default(now())
+}
+
+// ==================== 饭局游客 ====================
+model PartyGuest {
+  id         Int         @id @default(autoincrement())
+  partyId    Int
+  nickname   String
+  guestToken String      @unique // 游客身份标识
+  party      Party       @relation(fields: [partyId], references: [id], onDelete: Cascade)
+  dishes     PartyDish[]
+  createdAt  DateTime    @default(now())
+}
