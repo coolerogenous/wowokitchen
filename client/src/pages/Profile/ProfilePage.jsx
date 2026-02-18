@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LogOut, Key, Users, ChevronRight } from 'lucide-react';
+import { LogOut, Key, ChevronRight, User, Users } from 'lucide-react';
 import { useAuthStore, useToastStore } from '../../stores';
 import { tokenAPI } from '../../services/api';
 
@@ -22,51 +22,94 @@ export default function ProfilePage() {
         } catch (err) { showToast(err.response?.data?.message || '导入失败', 'error'); }
     };
 
-    const iconBox = (bg, color, Icon) => (
-        <div style={{ width: 40, height: 40, borderRadius: 'var(--radius-md)', background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <Icon size={20} color={color} />
-        </div>
-    );
-
-    const menuItem = (icon, label, desc, onClick, danger) => (
-        <div className="card__body" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)', cursor: 'pointer', borderBottom: '1px solid var(--border-light)' }} onClick={onClick}>
-            {icon}
-            <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 600, color: danger ? 'var(--color-danger)' : undefined }}>{label}</div>
-                {desc && <div className="text-sm text-secondary">{desc}</div>}
+    const MenuItem = ({ icon, label, desc, onClick, danger, action }) => (
+        <div
+            onClick={onClick}
+            style={{
+                display: 'flex', alignItems: 'center', gap: 16, cursor: 'pointer',
+                padding: '16px 0', borderBottom: '1px solid var(--border-light)'
+            }}
+        >
+            <div style={{
+                width: 44, height: 44, borderRadius: 12,
+                background: danger ? '#FFF5F5' : '#F9FAFB',
+                display: 'flex', alignItems: 'center', justifyContent: 'center'
+            }}>
+                {icon}
             </div>
-            {!danger && <ChevronRight size={18} color="var(--text-tertiary)" />}
+            <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 600, fontSize: 16, color: danger ? 'var(--color-danger)' : 'var(--text-primary)' }}>{label}</div>
+                {desc && <div className="text-sm text-secondary" style={{ marginTop: 2 }}>{desc}</div>}
+            </div>
+            {action || (!danger && <ChevronRight size={20} color="var(--text-tertiary)" />)}
         </div>
     );
 
     return (
         <>
             <header className="page-header"><h1>👤 我的</h1></header>
+
             <div className="page-container">
-                <div className="card animate-card-enter" style={{ marginBottom: 'var(--space-md)' }}>
-                    <div className="card__body" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)' }}>
-                        <div style={{ width: 56, height: 56, borderRadius: 'var(--radius-full)', background: 'linear-gradient(135deg, var(--color-primary), var(--color-accent))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem', color: 'white', fontWeight: 700 }}>
+                {/* Profile Card */}
+                <div className="card animate-card-enter" style={{ marginBottom: 'var(--space-md)', padding: 24 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+                        <div style={{
+                            width: 70, height: 70, borderRadius: '50%',
+                            background: 'linear-gradient(135deg, #FFD580, #FFA726)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: '2.5rem', color: 'white', fontWeight: 700,
+                            boxShadow: '0 4px 12px rgba(255, 167, 38, 0.3)'
+                        }}>
                             {(user?.nickname || '?')[0].toUpperCase()}
                         </div>
                         <div>
-                            <div style={{ fontSize: 'var(--font-size-lg)', fontWeight: 700 }}>{user?.nickname}</div>
-                            <div className="text-sm text-secondary">@{user?.username}</div>
+                            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)' }}>{user?.nickname}</div>
+                            <div className="text-sm text-secondary" style={{ marginTop: 4 }}>@{user?.username}</div>
                         </div>
                     </div>
                 </div>
 
-                <div className="card animate-card-enter" style={{ animationDelay: '100ms' }}>
-                    {menuItem(iconBox('rgba(255,107,53,0.1)', 'var(--color-primary)', Key), '密语导入', '输入密语克隆菜品或菜单', () => setShowImport(!showImport))}
+                {/* Menu List */}
+                <div className="card animate-card-enter" style={{ animationDelay: '100ms', padding: '0 24px' }}>
+                    <MenuItem
+                        icon={<Users size={20} color="var(--color-primary)" />}
+                        label="我的饭局"
+                        desc="查看和管理所有饭局"
+                        onClick={() => navigate('/party')}
+                    />
+
+                    <MenuItem
+                        icon={<Key size={20} color="var(--color-primary)" />}
+                        label="密语导入"
+                        desc="输入密语克隆菜品或菜单"
+                        onClick={() => setShowImport(!showImport)}
+                    />
+
                     {showImport && (
-                        <div style={{ padding: 'var(--space-md)', borderBottom: '1px solid var(--border-light)', background: 'var(--bg-input)' }}>
-                            <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
-                                <input className="form-input" placeholder="输入密语码" value={importCode} onChange={(e) => setImportCode(e.target.value)} style={{ flex: 1, textTransform: 'uppercase' }} />
+                        <div className="animate-slide-up" style={{ padding: '16px 0', borderBottom: '1px solid var(--border-light)' }}>
+                            <div style={{ display: 'flex', gap: 10 }}>
+                                <input
+                                    className="form-input"
+                                    placeholder="输入密语码"
+                                    value={importCode}
+                                    onChange={(e) => setImportCode(e.target.value)}
+                                    style={{ flex: 1, textTransform: 'uppercase', fontFamily: 'monospace' }}
+                                />
                                 <button className="btn btn--primary btn--sm" onClick={handleImport}>导入</button>
                             </div>
                         </div>
                     )}
-                    {menuItem(iconBox('rgba(46,196,182,0.1)', 'var(--color-secondary)', Users), '我的饭局', '管理和发起饭局', () => navigate('/party'))}
-                    {menuItem(iconBox('rgba(231,29,54,0.1)', 'var(--color-danger)', LogOut), '退出登录', null, handleLogout, true)}
+
+                    <MenuItem
+                        icon={<LogOut size={20} color="var(--color-danger)" />}
+                        label="退出登录"
+                        danger
+                        onClick={handleLogout}
+                    />
+                </div>
+
+                <div style={{ textAlign: 'center', marginTop: 40, color: 'var(--text-tertiary)', fontSize: 12 }}>
+                    v1.0.0 · WoWoKitchen 🐶
                 </div>
             </div>
         </>

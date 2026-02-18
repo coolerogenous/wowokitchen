@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Plus, Pencil, Trash2, BookOpen, ShoppingCart, Share2, X, Image } from 'lucide-react';
+import { Plus, Pencil, Trash2, BookOpen, ShoppingCart, Share2, X, Image as ImageIcon, Search } from 'lucide-react';
 import { menuAPI, dishAPI, tokenAPI } from '../../services/api';
 import { useToastStore } from '../../stores';
 import html2canvas from 'html2canvas';
@@ -14,6 +14,7 @@ export default function MenusPage() {
     const [editing, setEditing] = useState(null);
     const [form, setForm] = useState({ name: '', description: '', dishes: [] });
     const [exporting, setExporting] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
     const listRef = useRef(null);
     const showToast = useToastStore((s) => s.showToast);
 
@@ -137,6 +138,9 @@ export default function MenusPage() {
     const availableDishes = allDishes.filter(
         (d) => !form.dishes.find((fd) => fd.dish_id === d.id)
     );
+    const filteredMenus = menus.filter(m =>
+        m.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
     return (
         <>
@@ -145,9 +149,30 @@ export default function MenusPage() {
             </header>
 
             <div className="page-container">
+                {/* Search Bar */}
+                <div style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--bg-body)', paddingBottom: 10, paddingTop: 5 }}>
+                    <div className="search-bar" style={{
+                        background: 'white',
+                        borderRadius: 'var(--radius-lg)',
+                        padding: '10px 16px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        boxShadow: 'var(--shadow-sm)',
+                        border: '1px solid rgba(0,0,0,0.05)'
+                    }}>
+                        <Search size={18} color="var(--text-tertiary)" style={{ marginRight: 8 }} />
+                        <input
+                            style={{ border: 'none', outline: 'none', width: '100%', fontSize: '1rem' }}
+                            placeholder="搜索菜单..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+                </div>
+
                 {loading ? (
                     <div className="card-list">{[1, 2, 3].map((i) => <div key={i} className="skeleton skeleton--card" />)}</div>
-                ) : menus.length === 0 ? (
+                ) : filteredMenus.length === 0 ? (
                     <div className="empty-state">
                         <BookOpen className="empty-state__icon" size={80} />
                         <div className="empty-state__title">还没有菜单</div>
@@ -155,30 +180,41 @@ export default function MenusPage() {
                     </div>
                 ) : (
                     <div className="card-list">
-                        {menus.map((menu, index) => (
+                        {filteredMenus.map((menu, index) => (
                             <div key={menu.id} className="card animate-card-enter" style={{ animationDelay: `${index * 50}ms` }}>
                                 <div className="card__body">
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                        <div style={{ flex: 1 }}>
-                                            <div className="card__title">{menu.name}</div>
-                                            {menu.description && <div className="card__subtitle">{menu.description}</div>}
-                                            <div className="card__meta">
-                                                <span className="card__badge card__badge--primary">{(menu.menuDishes || []).length} 道菜</span>
-                                                <span className="card__price">¥{menu.total_cost}<small> 预估</small></span>
+                                        <div style={{ flex: 1, display: 'flex', gap: 16 }}>
+                                            <div style={{
+                                                width: 50, height: 50, background: '#E0F7FA', borderRadius: 'var(--radius-md)',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem'
+                                            }}>
+                                                📘
+                                            </div>
+                                            <div>
+                                                <div className="card__title">{menu.name}</div>
+                                                {menu.description && <div className="card__subtitle" style={{ marginBottom: 6 }}>{menu.description}</div>}
+                                                <div className="card__meta">
+                                                    <span className="card__badge card__badge--primary">{(menu.menuDishes || []).length} 道菜</span>
+                                                    <span className="card__price">¥{menu.total_cost}<small> 预估</small></span>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
-                                    <div style={{ display: 'flex', gap: 'var(--space-xs)', marginTop: 'var(--space-md)', flexWrap: 'wrap' }}>
+                                    <div style={{
+                                        display: 'flex', gap: 'var(--space-xs)', marginTop: 'var(--space-md)', flexWrap: 'wrap',
+                                        borderTop: '1px solid var(--border-light)', paddingTop: 12
+                                    }}>
                                         <button className="btn btn--sm btn--secondary" onClick={() => handleViewList(menu.id, menu.name)}>
                                             <ShoppingCart size={14} /> 采购清单
                                         </button>
                                         <button className="btn btn--sm btn--secondary" onClick={() => handleExport(menu.id)}>
-                                            <Share2 size={14} /> 导出密语
+                                            <Share2 size={14} /> 导出
                                         </button>
                                         <button className="btn btn--sm btn--secondary" onClick={() => openEdit(menu)}>
                                             <Pencil size={14} /> 编辑
                                         </button>
-                                        <button className="btn btn--sm btn--danger" onClick={() => handleDelete(menu.id)}>
+                                        <button className="btn btn--sm btn--secondary" style={{ color: 'var(--color-danger)' }} onClick={() => handleDelete(menu.id)}>
                                             <Trash2 size={14} />
                                         </button>
                                     </div>
@@ -189,12 +225,12 @@ export default function MenusPage() {
                 )}
             </div>
 
-            <button className="fab" onClick={openCreate}><Plus size={28} /></button>
+            <button className="fab animate-bounce-in" onClick={openCreate}><Plus size={28} /></button>
 
             {/* 创建/编辑弹窗 */}
             {showModal && (
                 <div className="modal-overlay" onClick={() => setShowModal(false)}>
-                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                    <div className="modal-content animate-slide-up" onClick={(e) => e.stopPropagation()}>
                         <div className="modal-handle" />
                         <div className="modal-header">
                             <h2>{editing ? '编辑菜单' : '新建菜单'}</h2>
@@ -216,7 +252,7 @@ export default function MenusPage() {
                                         {form.dishes.map((fd, idx) => (
                                             <div key={idx} style={{
                                                 display: 'flex', alignItems: 'center', gap: 'var(--space-sm)',
-                                                padding: 'var(--space-sm) var(--space-md)',
+                                                padding: '8px 12px',
                                                 background: 'var(--bg-input)', borderRadius: 'var(--radius-sm)',
                                             }}>
                                                 <span style={{ flex: 1, fontWeight: 500 }}>{fd.name}</span>
@@ -226,7 +262,7 @@ export default function MenusPage() {
                                                     style={{ width: 60, minHeight: 36, textAlign: 'center' }}
                                                 />
                                                 <span className="text-sm text-secondary">份</span>
-                                                <button className="page-header__action" style={{ color: 'var(--color-danger)', width: 32, height: 32 }}
+                                                <button className="page-header__action" style={{ color: 'var(--color-danger)', width: 32, height: 32, background: 'white' }}
                                                     onClick={() => removeDishFromForm(idx)}>
                                                     <X size={16} />
                                                 </button>
@@ -235,11 +271,11 @@ export default function MenusPage() {
                                     </div>
                                 )}
                                 {availableDishes.length > 0 && (
-                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-xs)', padding: 'var(--space-sm)', background: 'var(--bg-input)', borderRadius: 'var(--radius-md)' }}>
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-xs)', padding: 'var(--space-sm)', background: 'rgba(0,0,0,0.02)', borderRadius: 'var(--radius-md)' }}>
                                         {availableDishes.map((d) => (
-                                            <button key={d.id} className="btn btn--sm btn--secondary" style={{ minHeight: 32, padding: '0 12px', fontSize: 'var(--font-size-xs)' }}
+                                            <button key={d.id} className="btn btn--sm" style={{ minHeight: 32, padding: '0 12px', fontSize: 'var(--font-size-xs)', background: 'white', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}
                                                 onClick={() => addDishToForm(d)}>
-                                                <Plus size={14} /> {d.name}
+                                                <Plus size={14} color="var(--color-primary-dark)" /> {d.name}
                                             </button>
                                         ))}
                                     </div>
@@ -258,80 +294,84 @@ export default function MenusPage() {
             {/* 采购清单弹窗（支持导出图片） */}
             {showListModal && shoppingList && (
                 <div className="modal-overlay" onClick={() => setShowListModal(false)}>
-                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                    <div className="modal-content animate-slide-up" onClick={(e) => e.stopPropagation()}>
                         <div className="modal-handle" />
                         <div className="modal-header">
                             <h2>📝 采购清单</h2>
                             <div style={{ display: 'flex', gap: 'var(--space-xs)', alignItems: 'center' }}>
                                 <button className="btn btn--sm btn--primary" onClick={exportListAsImage} disabled={exporting}>
-                                    <Image size={14} /> {exporting ? '导出中...' : '导出图片'}
+                                    <ImageIcon size={14} /> {exporting ? '...' : '导出图片'}
                                 </button>
                                 <button className="page-header__action" onClick={() => setShowListModal(false)}><X size={22} /></button>
                             </div>
                         </div>
                         <div className="modal-body">
                             {/* 可导出区域 */}
-                            <div ref={listRef} style={{ padding: 'var(--space-md)', background: '#fff' }}>
+                            <div ref={listRef} style={{ padding: '24px', background: '#fff' }}>
                                 <div style={{
-                                    textAlign: 'center', fontSize: 'var(--font-size-xl)', fontWeight: 700,
+                                    textAlign: 'center', fontSize: '1.25rem', fontWeight: 800,
                                     marginBottom: 'var(--space-sm)', color: '#1a1a2e'
                                 }}>
                                     🛒 {shoppingList._menuName || shoppingList.menu_name}
                                 </div>
                                 <div style={{
-                                    textAlign: 'center', fontSize: 'var(--font-size-sm)',
-                                    marginBottom: 'var(--space-md)', color: '#666'
+                                    textAlign: 'center', fontSize: '0.9rem',
+                                    marginBottom: 'var(--space-md)', color: '#888',
+                                    paddingBottom: 20, borderBottom: '2px dashed #eee'
                                 }}>
                                     采购清单 · {new Date().toLocaleDateString('zh-CN')}
                                 </div>
 
                                 {/* 菜品列表 */}
-                                <div style={{ marginBottom: 12 }}>
-                                    <div style={{ fontWeight: 600, fontSize: 13, color: '#888', marginBottom: 4 }}>菜品</div>
-                                    {shoppingList.shopping_list.dishes.map((d, i) => (
+                                <div style={{ marginBottom: 20 }}>
+                                    <div style={{ fontWeight: 700, fontSize: 13, color: '#aaa', marginBottom: 8, letterSpacing: 1 }}>包含菜品</div>
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                                        {shoppingList.shopping_list.dishes.map((d, i) => (
+                                            <span key={i} style={{
+                                                background: '#f8f9fa', padding: '4px 10px', borderRadius: 6, fontSize: 13, color: '#555',
+                                                border: '1px solid #eee'
+                                            }}>
+                                                {d.name} <b style={{ color: '#333' }}>×{d.servings}</b>
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* 食材汇总 */}
+                                <div style={{ fontWeight: 700, fontSize: 13, color: '#aaa', marginBottom: 8, letterSpacing: 1 }}>需要购买</div>
+                                <div style={{
+                                    display: 'flex', justifyContent: 'space-between', padding: '8px 12px',
+                                    background: '#f0f2f5', borderRadius: '8px 8px 0 0', fontWeight: 600, fontSize: 13, color: '#666'
+                                }}>
+                                    <span style={{ flex: 1 }}>食材</span>
+                                    <span style={{ width: 80, textAlign: 'right' }}>数量</span>
+                                    <span style={{ width: 80, textAlign: 'right' }}>预估</span>
+                                </div>
+
+                                <div style={{ border: '1px solid #f0f2f5', borderRadius: '0 0 8px 8px', overflow: 'hidden' }}>
+                                    {shoppingList.shopping_list.ingredients.map((ing, i) => (
                                         <div key={i} style={{
-                                            display: 'flex', justifyContent: 'space-between', padding: '6px 0',
-                                            borderBottom: '1px solid #eee', fontSize: 14
+                                            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                            padding: '10px 12px', borderBottom: i === shoppingList.shopping_list.ingredients.length - 1 ? 'none' : '1px solid #f5f5fa', fontSize: 14
                                         }}>
-                                            <span style={{ color: '#333' }}>{d.name} × {d.servings}</span>
-                                            <span style={{ color: '#e74c3c', fontWeight: 600 }}>¥{d.estimated_cost.toFixed(2)}</span>
+                                            <span style={{ flex: 1, color: '#333', fontWeight: 500 }}>{ing.name}</span>
+                                            <span style={{ width: 80, textAlign: 'right', color: '#666' }}>{ing.total_quantity}{ing.unit}</span>
+                                            <span style={{ width: 80, textAlign: 'right', color: '#ff6b6b', fontWeight: 600 }}>¥{ing.total_price.toFixed(2)}</span>
                                         </div>
                                     ))}
                                 </div>
 
-                                {/* 食材汇总 */}
-                                <div style={{ fontWeight: 600, fontSize: 13, color: '#888', marginBottom: 4 }}>食材汇总</div>
                                 <div style={{
-                                    display: 'flex', justifyContent: 'space-between', padding: '8px 12px',
-                                    background: '#f0f0f5', borderRadius: '8px 8px 0 0', fontWeight: 600, fontSize: 13, color: '#555'
+                                    display: 'flex', justifyContent: 'space-between', padding: '16px 0',
+                                    borderTop: '2px solid #333', marginTop: 20,
+                                    fontWeight: 800, fontSize: 18, color: '#333'
                                 }}>
-                                    <span style={{ flex: 1 }}>食材</span>
-                                    <span style={{ width: 80, textAlign: 'right' }}>数量</span>
-                                    <span style={{ width: 80, textAlign: 'right' }}>金额</span>
-                                </div>
-
-                                {shoppingList.shopping_list.ingredients.map((ing, i) => (
-                                    <div key={i} style={{
-                                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                                        padding: '10px 12px', borderBottom: '1px solid #eee', fontSize: 14
-                                    }}>
-                                        <span style={{ flex: 1, color: '#333' }}>{ing.name}</span>
-                                        <span style={{ width: 80, textAlign: 'right', color: '#555' }}>{ing.total_quantity}{ing.unit}</span>
-                                        <span style={{ width: 80, textAlign: 'right', color: '#e74c3c', fontWeight: 600 }}>¥{ing.total_price.toFixed(2)}</span>
-                                    </div>
-                                ))}
-
-                                <div style={{
-                                    display: 'flex', justifyContent: 'space-between', padding: '14px 12px',
-                                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                                    borderRadius: '0 0 8px 8px', fontWeight: 700, fontSize: 16, color: '#fff'
-                                }}>
-                                    <span>总计</span>
+                                    <span>总计预算</span>
                                     <span>¥{shoppingList.shopping_list.grand_total.toFixed(2)}</span>
                                 </div>
 
-                                <div style={{ textAlign: 'center', marginTop: 12, fontSize: 11, color: '#aaa' }}>
-                                    旺财厨房 WoWoKitchen
+                                <div style={{ textAlign: 'center', marginTop: 30, fontSize: 12, color: '#bbb' }}>
+                                    Create with 旺财厨房 WoWoKitchen 🐶
                                 </div>
                             </div>
                         </div>

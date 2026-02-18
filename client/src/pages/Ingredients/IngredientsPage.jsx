@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Pencil, Trash2, Package, X } from 'lucide-react';
+import { Plus, Pencil, Trash2, Package, X, Search } from 'lucide-react';
 import { ingredientAPI } from '../../services/api';
 import { useToastStore } from '../../stores';
 
@@ -9,6 +9,7 @@ export default function IngredientsPage() {
     const [showModal, setShowModal] = useState(false);
     const [editing, setEditing] = useState(null);
     const [form, setForm] = useState({ name: '', unit_price: '', unit_spec: '', unit: 'g' });
+    const [searchTerm, setSearchTerm] = useState('');
     const showToast = useToastStore((s) => s.showToast);
 
     useEffect(() => { fetchData(); }, []);
@@ -67,18 +68,46 @@ export default function IngredientsPage() {
         }
     };
 
+    const filteredIngredients = ingredients.filter(i =>
+        i.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
     return (
         <>
             <header className="page-header">
                 <h1>🥬 食材库</h1>
+                <div style={{ position: 'relative' }}>
+
+                </div>
             </header>
 
             <div className="page-container">
+                {/* Search Bar */}
+                <div style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--bg-body)', paddingBottom: 10, paddingTop: 5 }}>
+                    <div className="search-bar" style={{
+                        background: 'white',
+                        borderRadius: 'var(--radius-lg)',
+                        padding: '10px 16px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        boxShadow: 'var(--shadow-sm)',
+                        border: '1px solid rgba(0,0,0,0.05)'
+                    }}>
+                        <Search size={18} color="var(--text-tertiary)" style={{ marginRight: 8 }} />
+                        <input
+                            style={{ border: 'none', outline: 'none', width: '100%', fontSize: '1rem' }}
+                            placeholder="搜索食材..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+                </div>
+
                 {loading ? (
                     <div className="card-list">
                         {[1, 2, 3].map((i) => <div key={i} className="skeleton skeleton--card" />)}
                     </div>
-                ) : ingredients.length === 0 ? (
+                ) : filteredIngredients.length === 0 ? (
                     <div className="empty-state">
                         <Package className="empty-state__icon" size={80} />
                         <div className="empty-state__title">还没有食材</div>
@@ -86,32 +115,45 @@ export default function IngredientsPage() {
                     </div>
                 ) : (
                     <div className="card-list">
-                        {ingredients.map((item, index) => (
+                        {filteredIngredients.map((item, index) => (
                             <div
                                 key={item.id}
                                 className="card animate-card-enter"
-                                style={{ animationDelay: `${index * 50}ms` }}
+                                style={{ animationDelay: `${index * 30}ms` }}
                             >
                                 <div className="card__body">
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                        <div>
-                                            <div className="card__title">{item.name}</div>
-                                            <div className="card__meta">
-                                                <span className="card__badge card__badge--primary">
-                                                    ¥{item.unit_price}/{item.unit_spec || item.unit}
-                                                </span>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                            <div style={{
+                                                width: 40, height: 40, background: '#E8F5E9', borderRadius: '50%',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#2E7D32'
+                                            }}>
+                                                🥬
+                                            </div>
+                                            <div>
+                                                <div className="card__title" style={{ marginBottom: 2 }}>{item.name}</div>
+                                                <div className="card__meta">
+                                                    <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                                                        ¥{item.unit_price} / {item.unit_spec || item.unit}
+                                                    </span>
+                                                </div>
                                             </div>
                                         </div>
-                                        <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
-                                            <button className="page-header__action" onClick={() => openEdit(item)}>
-                                                <Pencil size={18} />
+
+                                        <div style={{ display: 'flex', gap: 8 }}>
+                                            <button
+                                                className="btn btn--sm btn--secondary"
+                                                style={{ padding: 8, minHeight: 'auto', borderRadius: 12 }}
+                                                onClick={() => openEdit(item)}
+                                            >
+                                                <Pencil size={16} />
                                             </button>
                                             <button
-                                                className="page-header__action"
-                                                style={{ color: 'var(--color-danger)' }}
+                                                className="btn btn--sm btn--secondary"
+                                                style={{ padding: 8, minHeight: 'auto', borderRadius: 12, color: 'var(--color-danger)', background: '#FFF5F5' }}
                                                 onClick={() => handleDelete(item.id)}
                                             >
-                                                <Trash2 size={18} />
+                                                <Trash2 size={16} />
                                             </button>
                                         </div>
                                     </div>
@@ -123,14 +165,14 @@ export default function IngredientsPage() {
             </div>
 
             {/* FAB */}
-            <button className="fab" onClick={openCreate}>
+            <button className="fab animate-bounce-in" onClick={openCreate}>
                 <Plus size={28} />
             </button>
 
             {/* Modal */}
             {showModal && (
                 <div className="modal-overlay" onClick={() => setShowModal(false)}>
-                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                    <div className="modal-content animate-slide-up" onClick={(e) => e.stopPropagation()}>
                         <div className="modal-handle" />
                         <div className="modal-header">
                             <h2>{editing ? '编辑食材' : '新增食材'}</h2>

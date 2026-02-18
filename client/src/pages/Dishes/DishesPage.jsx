@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Pencil, Trash2, CookingPot, X, Check } from 'lucide-react';
+import { Plus, Pencil, Trash2, CookingPot, X, Check, Search } from 'lucide-react';
 import { dishAPI, ingredientAPI } from '../../services/api';
 import { useToastStore } from '../../stores';
 
@@ -10,6 +10,7 @@ export default function DishesPage() {
     const [showModal, setShowModal] = useState(false);
     const [editing, setEditing] = useState(null);
     const [form, setForm] = useState({ name: '', description: '', ingredients: [] });
+    const [searchTerm, setSearchTerm] = useState('');
     const showToast = useToastStore((s) => s.showToast);
 
     useEffect(() => { fetchData(); }, []);
@@ -110,6 +111,10 @@ export default function DishesPage() {
         (ing) => !form.ingredients.find((fi) => fi.ingredient_id === ing.id)
     );
 
+    const filteredDishes = dishes.filter(d =>
+        d.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
     return (
         <>
             <header className="page-header">
@@ -117,11 +122,32 @@ export default function DishesPage() {
             </header>
 
             <div className="page-container">
+                {/* Search Bar */}
+                <div style={{ position: 'sticky', top: 0, zIndex: 10, background: 'var(--bg-body)', paddingBottom: 10, paddingTop: 5 }}>
+                    <div className="search-bar" style={{
+                        background: 'white',
+                        borderRadius: 'var(--radius-lg)',
+                        padding: '10px 16px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        boxShadow: 'var(--shadow-sm)',
+                        border: '1px solid rgba(0,0,0,0.05)'
+                    }}>
+                        <Search size={18} color="var(--text-tertiary)" style={{ marginRight: 8 }} />
+                        <input
+                            style={{ border: 'none', outline: 'none', width: '100%', fontSize: '1rem' }}
+                            placeholder="搜索菜品..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                    </div>
+                </div>
+
                 {loading ? (
                     <div className="card-list">
                         {[1, 2, 3].map((i) => <div key={i} className="skeleton skeleton--card" />)}
                     </div>
-                ) : dishes.length === 0 ? (
+                ) : filteredDishes.length === 0 ? (
                     <div className="empty-state">
                         <CookingPot className="empty-state__icon" size={80} />
                         <div className="empty-state__title">还没有菜品</div>
@@ -129,36 +155,48 @@ export default function DishesPage() {
                     </div>
                 ) : (
                     <div className="card-list">
-                        {dishes.map((dish, index) => (
+                        {filteredDishes.map((dish, index) => (
                             <div
                                 key={dish.id}
                                 className="card animate-card-enter"
-                                style={{ animationDelay: `${index * 50}ms` }}
+                                style={{ animationDelay: `${index * 30}ms` }}
                             >
                                 <div className="card__body">
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                        <div style={{ flex: 1 }}>
-                                            <div className="card__title">{dish.name}</div>
-                                            {dish.description && <div className="card__subtitle">{dish.description}</div>}
-                                            <div className="card__meta">
-                                                <span className="card__badge card__badge--primary">
-                                                    {(dish.dishIngredients || []).length} 种食材
-                                                </span>
-                                                <span className="card__price">
-                                                    ¥{dish.estimated_cost}<small> 预估</small>
-                                                </span>
+                                        <div style={{ display: 'flex', gap: 16, flex: 1 }}>
+                                            <div style={{
+                                                width: 50, height: 50, background: '#FFF3E0', borderRadius: 'var(--radius-md)',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem'
+                                            }}>
+                                                🥘
+                                            </div>
+                                            <div style={{ flex: 1 }}>
+                                                <div className="card__title">{dish.name}</div>
+                                                {dish.description && <div className="card__subtitle" style={{ marginBottom: 6 }}>{dish.description}</div>}
+                                                <div className="card__meta">
+                                                    <span className="card__badge card__badge--primary">
+                                                        {(dish.dishIngredients || []).length} 种食材
+                                                    </span>
+                                                    <span className="card__price">
+                                                        ¥{dish.estimated_cost}<small> 预估</small>
+                                                    </span>
+                                                </div>
                                             </div>
                                         </div>
-                                        <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
-                                            <button className="page-header__action" onClick={() => openEdit(dish)}>
-                                                <Pencil size={18} />
+                                        <div style={{ display: 'flex', gap: 8 }}>
+                                            <button
+                                                className="btn btn--sm btn--secondary"
+                                                style={{ padding: 8, minHeight: 'auto', borderRadius: 12 }}
+                                                onClick={() => openEdit(dish)}
+                                            >
+                                                <Pencil size={16} />
                                             </button>
                                             <button
-                                                className="page-header__action"
-                                                style={{ color: 'var(--color-danger)' }}
+                                                className="btn btn--sm btn--secondary"
+                                                style={{ padding: 8, minHeight: 'auto', borderRadius: 12, color: 'var(--color-danger)', background: '#FFF5F5' }}
                                                 onClick={() => handleDelete(dish.id)}
                                             >
-                                                <Trash2 size={18} />
+                                                <Trash2 size={16} />
                                             </button>
                                         </div>
                                     </div>
@@ -169,14 +207,14 @@ export default function DishesPage() {
                 )}
             </div>
 
-            <button className="fab" onClick={openCreate}>
+            <button className="fab animate-bounce-in" onClick={openCreate}>
                 <Plus size={28} />
             </button>
 
             {/* Modal */}
             {showModal && (
                 <div className="modal-overlay" onClick={() => setShowModal(false)}>
-                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                    <div className="modal-content animate-slide-up" onClick={(e) => e.stopPropagation()}>
                         <div className="modal-handle" />
                         <div className="modal-header">
                             <h2>{editing ? '编辑菜品' : '新增菜品'}</h2>
@@ -216,9 +254,9 @@ export default function DishesPage() {
                                         {form.ingredients.map((fi, idx) => (
                                             <div key={idx} style={{
                                                 display: 'flex', alignItems: 'center', gap: 'var(--space-sm)',
-                                                padding: 'var(--space-sm) var(--space-md)',
+                                                padding: '12px',
                                                 background: 'var(--bg-input)',
-                                                borderRadius: 'var(--radius-sm)',
+                                                borderRadius: 'var(--radius-md)',
                                             }}>
                                                 <span style={{ flex: 1, fontWeight: 500 }}>{fi.name}</span>
                                                 <input
@@ -228,12 +266,12 @@ export default function DishesPage() {
                                                     placeholder="用量"
                                                     value={fi.quantity}
                                                     onChange={(e) => updateIngQuantity(idx, e.target.value)}
-                                                    style={{ width: 80, minHeight: 36, textAlign: 'center' }}
+                                                    style={{ width: 80, minHeight: 36, textAlign: 'center', padding: '4px' }}
                                                 />
-                                                <span className="text-sm text-secondary">{fi.unit}</span>
+                                                <span className="text-sm text-secondary" style={{ width: 30 }}>{fi.unit}</span>
                                                 <button
                                                     className="page-header__action"
-                                                    style={{ color: 'var(--color-danger)', width: 32, height: 32 }}
+                                                    style={{ color: 'var(--color-danger)', width: 32, height: 32, background: 'white' }}
                                                     onClick={() => removeIngFromForm(idx)}
                                                 >
                                                     <X size={16} />
@@ -248,17 +286,18 @@ export default function DishesPage() {
                                     <div style={{
                                         display: 'flex', flexWrap: 'wrap', gap: 'var(--space-xs)',
                                         padding: 'var(--space-sm)',
-                                        background: 'var(--bg-input)',
+                                        background: 'rgba(0,0,0,0.02)',
                                         borderRadius: 'var(--radius-md)',
+                                        marginTop: 8
                                     }}>
                                         {availableIngredients.map((ing) => (
                                             <button
                                                 key={ing.id}
-                                                className="btn btn--sm btn--secondary"
-                                                style={{ minHeight: 32, padding: '0 12px', fontSize: 'var(--font-size-xs)' }}
+                                                className="btn btn--sm"
+                                                style={{ minHeight: 32, padding: '0 12px', fontSize: 'var(--font-size-xs)', background: 'white', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}
                                                 onClick={() => addIngredientToForm(ing)}
                                             >
-                                                <Plus size={14} /> {ing.name}
+                                                <Plus size={14} color="var(--color-primary-dark)" /> {ing.name}
                                             </button>
                                         ))}
                                     </div>

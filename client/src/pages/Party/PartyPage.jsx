@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { Plus, Lock, Unlock, ShoppingCart, Users, X, Trash2, Minus, Edit3, Image, Share2 } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
+import { Plus, Lock, Unlock, ShoppingCart, Users, X, Trash2, Minus, Edit3, Image as ImageIcon, Share2 } from 'lucide-react';
 import { partyAPI, dishAPI, menuAPI } from '../../services/api';
 import { useToastStore } from '../../stores';
 import html2canvas from 'html2canvas';
@@ -19,7 +20,16 @@ export default function PartyPage() {
     const [editForm, setEditForm] = useState({ name: '' });
     const [exporting, setExporting] = useState(false);
     const listRef = useRef(null);
+    const location = useLocation();
     const showToast = useToastStore((s) => s.showToast);
+
+    useEffect(() => {
+        if (location.state?.create) {
+            openCreate();
+            // Clear state to prevent reopening on refresh
+            window.history.replaceState({}, document.title);
+        }
+    }, [location]);
 
     useEffect(() => { fetchData(); }, []);
 
@@ -28,9 +38,9 @@ export default function PartyPage() {
             const [pRes, dRes, mRes] = await Promise.all([
                 partyAPI.getMyParties(), dishAPI.getAll(), menuAPI.getAll()
             ]);
-            setParties(pRes.data.parties);
-            setAllDishes(dRes.data.dishes);
-            setAllMenus(mRes.data.menus);
+            setParties(pRes.data.parties || []);
+            setAllDishes(dRes.data.dishes || []);
+            setAllMenus(mRes.data.menus || []);
         } catch (err) { showToast('获取数据失败', 'error'); }
         finally { setLoading(false); }
     };
@@ -186,7 +196,6 @@ export default function PartyPage() {
         <>
             <header className="page-header">
                 <h1>🍻 饭局</h1>
-                <button className="page-header__action" onClick={openCreate}><Plus size={24} /></button>
             </header>
             <div className="page-container">
                 {loading ? (
@@ -209,15 +218,18 @@ export default function PartyPage() {
                                                 <span className={`card__badge ${p.status === 'active' ? 'card__badge--success' : 'card__badge--primary'}`}>
                                                     {p.status === 'active' ? '进行中' : '已锁定'}
                                                 </span>
-                                                <span className="text-sm text-secondary">{(p.guests || []).length} 人</span>
+                                                <span className="text-sm text-secondary">{(p.guests || []).filter(g => g.nickname !== '主人').length} 位客人</span>
                                                 <span className="text-sm text-secondary">{(p.partyDishes || []).length} 道菜</span>
                                             </div>
                                         </div>
                                         <div className="card__price">¥{Number(p.total_budget || 0).toFixed(2)}</div>
                                     </div>
-                                    <div style={{ display: 'flex', gap: 'var(--space-xs)', marginTop: 'var(--space-md)', flexWrap: 'wrap' }}>
-                                        <button className="btn btn--sm btn--primary" onClick={() => viewDetail(p.share_code)}>查看详情</button>
-                                        <button className="btn btn--sm btn--secondary" onClick={() => shareParty(p.share_code)}><Share2 size={14} /> 分享</button>
+                                    <div style={{
+                                        display: 'flex', gap: 'var(--space-xs)', marginTop: 'var(--space-md)', flexWrap: 'wrap',
+                                        borderTop: '1px solid var(--border-light)', paddingTop: 12
+                                    }}>
+                                        <button className="btn btn--sm btn--primary" onClick={() => viewDetail(p.share_code)}>详情</button>
+                                        <button className="btn btn--sm btn--secondary" onClick={() => shareParty(p.share_code)}><Share2 size={14} /> 邀请</button>
                                         <button className="btn btn--sm btn--secondary" onClick={() => viewShoppingList(p.share_code)}><ShoppingCart size={14} /> 清单</button>
                                         <button className="btn btn--sm btn--secondary" onClick={() => handleToggle(p.id)}>
                                             {p.status === 'active' ? <Lock size={14} /> : <Unlock size={14} />}
@@ -232,10 +244,12 @@ export default function PartyPage() {
                 )}
             </div>
 
+            <button className="fab animate-bounce-in" onClick={openCreate}><Plus size={28} /></button>
+
             {/* ── 创建饭局弹窗 ── */}
             {showCreate && (
                 <div className="modal-overlay" onClick={() => setShowCreate(false)}>
-                    <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxHeight: '85vh', overflowY: 'auto' }}>
+                    <div className="modal-content animate-slide-up" onClick={e => e.stopPropagation()} style={{ maxHeight: '85vh', overflowY: 'auto' }}>
                         <div className="modal-handle" />
                         <div className="modal-header"><h2>发起饭局</h2><button className="page-header__action" onClick={() => setShowCreate(false)}><X size={22} /></button></div>
                         <div className="modal-body">
@@ -253,7 +267,7 @@ export default function PartyPage() {
                                             <button key={m.id}
                                                 className={`btn btn--sm ${form.menuId === m.id ? 'btn--primary' : 'btn--secondary'}`}
                                                 onClick={() => selectMenu(m.id)}>
-                                                📋 {m.name} ({(m.menuDishes || []).length}道)
+                                                📋 {m.name}
                                             </button>
                                         ))}
                                     </div>
@@ -266,7 +280,7 @@ export default function PartyPage() {
                                 {allDishes.length === 0 ? (
                                     <div className="text-sm text-secondary">请先在"菜品"页面创建菜品</div>
                                 ) : (
-                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-xs)' }}>
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-xs)', maxHeight: 300, overflowY: 'auto' }}>
                                         {allDishes.map(d => {
                                             const selected = form.selectedDishIds.includes(d.id);
                                             return (
@@ -290,7 +304,7 @@ export default function PartyPage() {
             {/* ── 编辑弹窗 ── */}
             {showEdit && (
                 <div className="modal-overlay" onClick={() => setShowEdit(null)}>
-                    <div className="modal-content" onClick={e => e.stopPropagation()}>
+                    <div className="modal-content animate-slide-up" onClick={e => e.stopPropagation()}>
                         <div className="modal-handle" />
                         <div className="modal-header"><h2>编辑饭局</h2><button className="page-header__action" onClick={() => setShowEdit(null)}><X size={22} /></button></div>
                         <div className="modal-body">
@@ -307,17 +321,17 @@ export default function PartyPage() {
             {/* ── 详情弹窗 ── */}
             {showDetail && detailData && (
                 <div className="modal-overlay" onClick={() => setShowDetail(null)}>
-                    <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxHeight: '85vh', overflowY: 'auto' }}>
+                    <div className="modal-content animate-slide-up" onClick={e => e.stopPropagation()} style={{ maxHeight: '85vh', overflowY: 'auto' }}>
                         <div className="modal-handle" />
                         <div className="modal-header"><h2>{detailData.name}</h2><button className="page-header__action" onClick={() => setShowDetail(null)}><X size={22} /></button></div>
                         <div className="modal-body">
                             <div style={{
                                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                                padding: 'var(--space-md)', background: 'var(--color-primary-alpha)',
+                                padding: 'var(--space-md)', background: 'var(--color-primary-light)',
                                 borderRadius: 'var(--radius-md)', marginBottom: 'var(--space-md)'
                             }}>
-                                <span style={{ fontWeight: 600 }}>预估总价</span>
-                                <span style={{ color: 'var(--color-primary)', fontWeight: 700, fontSize: 'var(--font-size-xl)' }}>
+                                <span style={{ fontWeight: 600, color: 'var(--color-primary-dark)' }}>预估总价</span>
+                                <span style={{ color: 'var(--color-primary-dark)', fontWeight: 800, fontSize: 'var(--font-size-xl)' }}>
                                     ¥{Number(detailData.total_budget || 0).toFixed(2)}
                                 </span>
                             </div>
@@ -329,26 +343,26 @@ export default function PartyPage() {
                                 (detailData.partyDishes || []).map(pd => (
                                     <div key={pd.id} style={{
                                         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                                        padding: 'var(--space-sm) 0', borderBottom: '1px solid var(--border-light)'
+                                        padding: '12px 0', borderBottom: '1px solid var(--border-light)'
                                     }}>
                                         <div style={{ flex: 1 }}>
-                                            <div style={{ fontWeight: 500 }}>{pd.dish?.name || '未知'}</div>
+                                            <div style={{ fontWeight: 600 }}>{pd.dish?.name || '未知'}</div>
                                             <div className="text-sm text-secondary">by {pd.added_by}</div>
                                         </div>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-xs)' }}>
                                             {detailData.status === 'active' ? (
                                                 <>
-                                                    <button className="btn btn--sm btn--secondary" style={{ padding: '4px 8px', minWidth: 'auto' }}
+                                                    <button className="btn btn--sm btn--secondary" style={{ padding: 6, minWidth: 'auto', borderRadius: 8 }}
                                                         onClick={() => handleChangeServings(pd.id, pd.servings - 1)} disabled={pd.servings <= 1}><Minus size={14} /></button>
-                                                    <span style={{ minWidth: 28, textAlign: 'center', fontWeight: 600 }}>{pd.servings}</span>
-                                                    <button className="btn btn--sm btn--secondary" style={{ padding: '4px 8px', minWidth: 'auto' }}
+                                                    <span style={{ minWidth: 24, textAlign: 'center', fontWeight: 600 }}>{pd.servings}</span>
+                                                    <button className="btn btn--sm btn--secondary" style={{ padding: 6, minWidth: 'auto', borderRadius: 8 }}
                                                         onClick={() => handleChangeServings(pd.id, pd.servings + 1)}><Plus size={14} /></button>
                                                     <button className="btn btn--sm btn--secondary"
-                                                        style={{ padding: '4px 8px', minWidth: 'auto', color: 'var(--color-danger)', marginLeft: 4 }}
+                                                        style={{ padding: 6, minWidth: 'auto', color: 'var(--color-danger)', marginLeft: 8, background: '#FFF5F5', borderRadius: 8 }}
                                                         onClick={() => handleRemoveDish(pd.id)}><Trash2 size={14} /></button>
                                                 </>
                                             ) : (
-                                                <span style={{ fontWeight: 600 }}>× {pd.servings}</span>
+                                                <span style={{ fontWeight: 600, fontSize: '1.1rem' }}>× {pd.servings}</span>
                                             )}
                                         </div>
                                     </div>
@@ -360,7 +374,9 @@ export default function PartyPage() {
                                     <div className="form-label">添加菜品</div>
                                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-xs)' }}>
                                         {getAvailableDishesForDetail().map(d => (
-                                            <button key={d.id} className="btn btn--sm btn--secondary" onClick={() => handleAddDish(showDetail, d.id, d.name)}>
+                                            <button key={d.id} className="btn btn--sm btn--secondary"
+                                                style={{ background: 'white', border: '1px solid var(--border-light)' }}
+                                                onClick={() => handleAddDish(showDetail, d.id, d.name)}>
                                                 <Plus size={14} /> {d.name}
                                             </button>
                                         ))}
@@ -375,35 +391,41 @@ export default function PartyPage() {
             {/* ── 采购清单弹窗 ── */}
             {showList && listData && (
                 <div className="modal-overlay" onClick={() => setShowList(false)}>
-                    <div className="modal-content" onClick={e => e.stopPropagation()}>
+                    <div className="modal-content animate-slide-up" onClick={e => e.stopPropagation()}>
                         <div className="modal-handle" />
                         <div className="modal-header">
                             <h2>📝 采购清单</h2>
                             <div style={{ display: 'flex', gap: 'var(--space-xs)', alignItems: 'center' }}>
                                 <button className="btn btn--sm btn--primary" onClick={exportListAsImage} disabled={exporting}>
-                                    <Image size={14} /> {exporting ? '...' : '导出图片'}
+                                    <ImageIcon size={14} /> {exporting ? '...' : '导出图片'}
                                 </button>
                                 <button className="page-header__action" onClick={() => setShowList(false)}><X size={22} /></button>
                             </div>
                         </div>
                         <div className="modal-body">
-                            <div ref={listRef} style={{ padding: 'var(--space-md)', background: '#fff' }}>
-                                <div style={{ textAlign: 'center', fontSize: 'var(--font-size-xl)', fontWeight: 700, marginBottom: 6, color: '#1a1a2e' }}>🛒 {listData.party_name}</div>
-                                <div style={{ textAlign: 'center', fontSize: 13, marginBottom: 16, color: '#666' }}>采购清单 · {new Date().toLocaleDateString('zh-CN')}</div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', background: '#f0f0f5', borderRadius: '8px 8px 0 0', fontWeight: 600, fontSize: 13, color: '#555' }}>
+                            <div ref={listRef} style={{ padding: '24px', background: '#fff' }}>
+                                <div style={{ textAlign: 'center', fontSize: '1.25rem', fontWeight: 800, marginBottom: 8, color: '#1a1a2e' }}>🛒 {listData.party_name}</div>
+                                <div style={{ textAlign: 'center', fontSize: 13, marginBottom: 20, color: '#888', paddingBottom: 16, borderBottom: '2px dashed #eee' }}>清单生成于 · {new Date().toLocaleDateString('zh-CN')}</div>
+
+                                <div style={{ fontWeight: 700, fontSize: 13, color: '#aaa', marginBottom: 8, letterSpacing: 1 }}>需要购买</div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 12px', background: '#f0f2f5', borderRadius: '8px 8px 0 0', fontWeight: 600, fontSize: 13, color: '#555' }}>
                                     <span style={{ flex: 1 }}>食材</span><span style={{ width: 80, textAlign: 'right' }}>数量</span><span style={{ width: 80, textAlign: 'right' }}>金额</span>
                                 </div>
-                                {(listData.shopping_list?.ingredients || []).map((ing, i) => (
-                                    <div key={i} style={{ display: 'flex', alignItems: 'center', padding: '10px 12px', borderBottom: '1px solid #eee', fontSize: 14 }}>
-                                        <span style={{ flex: 1, color: '#333' }}>{ing.name}</span>
-                                        <span style={{ width: 80, textAlign: 'right', color: '#555' }}>{ing.total_quantity}{ing.unit}</span>
-                                        <span style={{ width: 80, textAlign: 'right', color: '#e74c3c', fontWeight: 600 }}>¥{Number(ing.total_price).toFixed(2)}</span>
-                                    </div>
-                                ))}
-                                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '14px 12px', background: 'linear-gradient(135deg, #667eea, #764ba2)', borderRadius: '0 0 8px 8px', fontWeight: 700, fontSize: 16, color: '#fff' }}>
+
+                                <div style={{ border: '1px solid #f0f2f5', borderRadius: '0 0 8px 8px', overflow: 'hidden' }}>
+                                    {(listData.shopping_list?.ingredients || []).map((ing, i) => (
+                                        <div key={i} style={{ display: 'flex', alignItems: 'center', padding: '10px 12px', borderBottom: i === (listData.shopping_list?.ingredients || []).length - 1 ? 'none' : '1px solid #f5f5fa', fontSize: 14 }}>
+                                            <span style={{ flex: 1, color: '#333', fontWeight: 500 }}>{ing.name}</span>
+                                            <span style={{ width: 80, textAlign: 'right', color: '#666' }}>{ing.total_quantity}{ing.unit}</span>
+                                            <span style={{ width: 80, textAlign: 'right', color: '#ff6b6b', fontWeight: 600 }}>¥{Number(ing.total_price).toFixed(2)}</span>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '16px 0', borderTop: '2px solid #333', marginTop: 20, fontWeight: 800, fontSize: 18, color: '#333' }}>
                                     <span>总计</span><span>¥{Number(listData.shopping_list?.grand_total || 0).toFixed(2)}</span>
                                 </div>
-                                <div style={{ textAlign: 'center', marginTop: 12, fontSize: 11, color: '#aaa' }}>旺财厨房 WoWoKitchen</div>
+                                <div style={{ textAlign: 'center', marginTop: 30, fontSize: 12, color: '#bbb' }}>Create with 旺财厨房 WoWoKitchen 🐶</div>
                             </div>
                         </div>
                     </div>

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChefHat } from 'lucide-react';
+import { ChefHat, User } from 'lucide-react';
 import { authAPI } from '../../services/api';
 import { useAuthStore, useToastStore } from '../../stores';
 
@@ -35,64 +35,92 @@ export default function LoginPage() {
 
     return (
         <div className="auth-page">
-            <div className="auth-logo">
-                <span className="auth-logo__emoji">🐕</span>
-                旺财厨房
-            </div>
-            <p className="auth-subtitle">精准采购，轻松组局</p>
+            <div className="auth-card animate-card-enter">
+                <div style={{ marginBottom: 30 }}>
+                    <div style={{
+                        width: 80, height: 80, background: 'var(--color-primary-light)',
+                        borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        margin: '0 auto 16px', boxShadow: 'var(--shadow-md)', border: '4px solid white'
+                    }}>
+                        <span style={{ fontSize: '3.5rem' }}>🐶</span>
+                    </div>
+                    <h1 style={{ fontSize: '1.8rem', color: 'var(--text-primary)', marginBottom: 4 }}>旺财厨房</h1>
+                    <p style={{ color: 'var(--text-tertiary)', fontSize: '0.9rem' }}>让每一餐都充满期待</p>
+                </div>
 
-            <div className="auth-card">
+                <div style={{ marginBottom: 24, paddingBottom: 20, borderBottom: '1px solid var(--border-light)' }}>
+                    <h2 style={{ fontSize: '1.2rem', color: 'var(--text-secondary)' }}>
+                        {isRegister ? '创建新账号' : '欢迎回来'}
+                    </h2>
+                </div>
+
                 <form onSubmit={handleSubmit}>
                     <div className="form-group">
-                        <label className="form-label">用户名</label>
-                        <input
-                            className="form-input"
-                            type="text"
-                            placeholder="输入用户名"
-                            value={form.username}
-                            onChange={(e) => setForm({ ...form, username: e.target.value })}
-                        />
+                        <div className="input-wrapper">
+                            <User className="input-icon" size={20} />
+                            <input
+                                className="form-input has-icon"
+                                type="text"
+                                placeholder="用户名"
+                                value={form.username}
+                                onChange={(e) => setForm({ ...form, username: e.target.value })}
+                            />
+                        </div>
                     </div>
 
                     <div className="form-group">
-                        <label className="form-label">密码</label>
-                        <input
-                            className="form-input"
-                            type="password"
-                            placeholder="输入密码"
-                            value={form.password}
-                            onChange={(e) => setForm({ ...form, password: e.target.value })}
-                        />
+                        <div className="input-wrapper">
+                            <ChefHat className="input-icon" size={20} />
+                            <input
+                                className="form-input has-icon"
+                                type="password"
+                                placeholder="密码"
+                                value={form.password}
+                                onChange={(e) => setForm({ ...form, password: e.target.value })}
+                            />
+                        </div>
                     </div>
 
                     {isRegister && (
-                        <div className="form-group">
-                            <label className="form-label">昵称</label>
-                            <input
-                                className="form-input"
-                                type="text"
-                                placeholder="给自己起个名字"
-                                value={form.nickname}
-                                onChange={(e) => setForm({ ...form, nickname: e.target.value })}
-                            />
+                        <div className="form-group animate-slide-up">
+                            <div className="input-wrapper">
+                                <span className="input-icon" style={{ fontSize: 18, fontWeight: 700 }}>@</span>
+                                <input
+                                    className="form-input has-icon"
+                                    type="text"
+                                    placeholder="你的昵称"
+                                    value={form.nickname}
+                                    onChange={(e) => setForm({ ...form, nickname: e.target.value })}
+                                />
+                            </div>
                         </div>
                     )}
 
-                    <button
-                        type="submit"
-                        className="btn btn--primary btn--block btn--lg"
-                        disabled={loading}
-                    >
-                        {loading ? '处理中...' : isRegister ? '注册' : '登录'}
-                    </button>
+                    <div style={{ marginTop: 30 }}>
+                        <button
+                            type="submit"
+                            className="btn btn--primary btn--block"
+                            style={{ height: 56, fontSize: '1.1rem', boxShadow: '0 8px 20px rgba(255, 213, 128, 0.6)' }}
+                            disabled={loading}
+                        >
+                            {loading ? '处理中...' : isRegister ? '注册并登录' : '登 录'}
+                        </button>
+                    </div>
                 </form>
 
-                <div className="auth-toggle">
-                    {isRegister ? '已有账号？' : '没有账号？'}
-                    <a href="#" onClick={(e) => { e.preventDefault(); setIsRegister(!isRegister); }}>
-                        {isRegister ? '去登录' : '去注册'}
-                    </a>
+                <div style={{ marginTop: 24, fontSize: '0.9rem', color: 'var(--text-tertiary)' }}>
+                    {isRegister ? '已有账号？' : '还没有账号？'}
+                    <span
+                        style={{ color: 'var(--color-primary-dark)', cursor: 'pointer', fontWeight: 700, marginLeft: 6, textDecoration: 'underline' }}
+                        onClick={() => { setIsRegister(!isRegister); setForm({ username: '', password: '', nickname: '' }); }}
+                    >
+                        {isRegister ? '直接登录' : '免费注册'}
+                    </span>
                 </div>
+            </div>
+
+            <div style={{ position: 'fixed', bottom: 20, color: 'var(--text-tertiary)', fontSize: 12, opacity: 0.6 }}>
+                WoWoKitchen v1.0
             </div>
         </div>
     );
